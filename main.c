@@ -9,16 +9,27 @@
 #include <errno.h>
 
 volatile int sigint_atomic_t = 1;
+volatile int sigalrm_atomic_t = 1;
 
 void catch_int() {
 	sigint_atomic_t = 0;
+}
+
+void catch_alrm() {
+	sigalrm_atomic_t = 0;
 }
  
 int main()
 {	
 	struct sigaction my_sigint_handler = {.sa_handler = catch_int}; 
 	if ( sigaction(SIGINT, &my_sigint_handler, 0) < 0 ) {
-		fprintf(stderr, "sigaction error!\n");
+		perror("sigaction error!");
+		exit(1);
+	};
+	
+	struct sigaction my_sigalrm_handler = {.sa_handler = catch_alrm}; 
+	if ( sigaction(SIGALRM, &my_sigalrm_handler, 0) < 0 ) {
+		perror("sigaction error!");
 		exit(1);
 	};
 	
@@ -38,9 +49,11 @@ int main()
     c[1] = 0;
     int res;
     printf("start!\n");
+    //alarm(5);
     while (sigint_atomic_t) {
         fd = open(fifo, O_RDONLY);
         if (fd < 0) {
+        	printf("%d!!!!\n", fd);
         	if (errno == EINTR && !sigint_atomic_t) {
         		printf("\ncatch sigint!\nexit...\n");
 				exit(0);
