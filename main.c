@@ -49,35 +49,58 @@ int main()
     c[1] = 0;
     int res;
     printf("start!\n");
-    //alarm(5);
+    alarm(5);
     while (sigint_atomic_t) {
-        fd = open(fifo, O_RDONLY);
+    	op: fd = open(fifo, O_RDONLY);
         if (fd < 0) {
-        	printf("%d!!!!\n", fd);
-        	if (errno == EINTR && !sigint_atomic_t) {
-        		printf("\ncatch sigint!\nexit...\n");
-				exit(0);
+        	if (errno == EINTR) {
+        		if (!sigint_atomic_t) {
+        			printf("\ncatch sigint!\nexit...\n");
+					exit(0);
+				}
+
+				if (!sigalrm_atomic_t) {
+					sigalrm_atomic_t = 1;
+        			printf("waiting for a message!\n");
+        			alarm(5);
+					goto op;
+				}
         	}
 
         	perror("could not open fd!");
         	exit(1);
 		}
 		
-        while ( ( res = read(fd, c, 1) ) > 0 ) {
+        rd: while ( ( res = read(fd, c, 1) ) > 0 ) {
         	printf("%s", c);
         }
 
 		if (res < 0) {
-			if (errno == EINTR && !sigint_atomic_t) {
-				printf("\ncatch sigint!\nexit...\n");
-				exit(0);
-			}
+        	if (errno == EINTR) {
+        		if (!sigint_atomic_t) {
+        			printf("\ncatch sigint!\nexit...\n");
+					exit(0);
+				}
+
+				if (!sigalrm_atomic_t) {
+				    sigalrm_atomic_t = 1;
+        			printf("waiting for a message!\n");
+        			alarm(5);
+					goto rd;
+				}
+        	}
 			
 			perror("read error!");
 			exit(1);
 		}
         
         close(fd);
+
+        if (!sigalrm_atomic_t) {
+        	sigalrm_atomic_t = 1;
+        	printf("waiting for a message!\n");
+        	alarm(5);
+        }
     }
     return 0;
 }
